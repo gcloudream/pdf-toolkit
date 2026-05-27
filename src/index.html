@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF 处理平台</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a25;--bg4:#222230;
+  --fg:#e0e0e8;--fg2:#a0a0b0;--fg3:#666680;
+  --accent:#6366f1;--accent2:#818cf8;--accent3:#4f46e5;
+  --green:#22c55e;--red:#ef4444;--yellow:#eab308;--cyan:#22d3ee;
+  --border:#2a2a3a;--radius:8px;--shadow:0 4px 24px rgba(0,0,0,.4);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg);color:var(--fg);line-height:1.6;min-height:100vh;-webkit-user-select:none;user-select:none}
+.app{max-width:1100px;margin:0 auto;padding:16px 20px}
+header{text-align:center;padding:20px 0 16px;border-bottom:1px solid var(--border);margin-bottom:20px}
+header h1{font-size:24px;font-weight:700;letter-spacing:-0.5px}
+header h1 span{color:var(--accent2)}
+header p{color:var(--fg2);font-size:13px;margin-top:4px}
+.tabs{display:flex;gap:3px;overflow-x:auto;padding:3px;background:var(--bg2);border-radius:var(--radius);margin-bottom:20px;border:1px solid var(--border)}
+.tab{padding:8px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;color:var(--fg2);white-space:nowrap;transition:all .2s;border:none;background:none}
+.tab:hover{color:var(--fg);background:var(--bg3)}
+.tab.active{color:#fff;background:var(--accent3)}
+.panel{display:none}.panel.active{display:block}
+.panel-title{font-size:18px;font-weight:600;margin-bottom:6px}
+.panel-desc{color:var(--fg2);font-size:13px;margin-bottom:16px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+label{font-size:12px;color:var(--fg2);font-weight:500}
+input[type=text],input[type=number],select{
+  padding:7px 10px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:6px;color:var(--fg);font-size:12px;outline:none;transition:border .2s}
+input:focus,select:focus{border-color:var(--accent)}
+.btn{padding:9px 18px;border-radius:6px;font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .2s;border:none;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-danger{background:var(--red);color:#fff}
+.btn-danger:hover{background:#dc2626}
+.btn-secondary{background:var(--bg4);color:var(--fg);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg3)}
+.file-area{background:var(--bg2);border:2px dashed var(--border);border-radius:var(--radius);
+  padding:24px;text-align:center;cursor:pointer;transition:all .2s;margin:12px 0}
+.file-area:hover{border-color:var(--accent)}
+.file-area.has{border-color:var(--green);border-style:solid}
+.file-area .icon{font-size:36px;margin-bottom:8px;opacity:.6}
+.file-area .text{color:var(--fg2);font-size:13px}
+.file-area .text strong{color:var(--fg);cursor:pointer}
+.file-name{margin:8px 0;padding:8px 12px;background:var(--bg3);border-radius:var(--radius);
+  font-size:13px;display:flex;align-items:center;gap:8px}
+.file-name .remove{cursor:pointer;color:var(--red);margin-left:auto;opacity:.6}
+.file-name .remove:hover{opacity:1}
+.status{padding:10px 14px;border-radius:var(--radius);margin:10px 0;font-size:12px;display:none}
+.status.show{display:block}
+.status.info{background:rgba(99,102,241,.1);border:1px solid var(--accent);color:var(--accent2)}
+.status.success{background:rgba(34,197,94,.1);border:1px solid var(--green);color:var(--green)}
+.status.error{background:rgba(239,68,68,.1);border:1px solid var(--red);color:var(--red)}
+.status.loading{background:rgba(234,179,8,.1);border:1px solid var(--yellow);color:var(--yellow)}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--fg3);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow)}
+.modal h3{margin-bottom:12px;font-size:16px}
+.modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+.toast{position:fixed;top:16px;right:16px;padding:10px 16px;border-radius:var(--radius);font-size:12px;z-index:200;animation:slideIn .3s;box-shadow:var(--shadow)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast.success{background:var(--green);color:#fff}
+.toast.error{background:var(--red);color:#fff}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>📄 <span>PDF</span> 处理平台</h1>
+    <p>合并 · 拆分 · 删除 · 提取 · 旋转 · 重排序 · 压缩</p>
+  </header>
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-panel="merge">📎 合并</button>
+    <button class="tab" data-panel="split">✂️ 拆分</button>
+    <button class="tab" data-panel="delete">🗑️ 删除</button>
+    <button class="tab" data-panel="extract">📋 提取</button>
+    <button class="tab" data-panel="rotate">🔄 旋转</button>
+    <button class="tab" data-panel="reorder">↕️ 重排序</button>
+    <button class="tab" data-panel="compress">📦 压缩</button>
+  </div>
+
+  <!-- 合并 -->
+  <div class="panel active" id="panel-merge">
+    <h2 class="panel-title">合并 PDF</h2>
+    <p class="panel-desc">选择多个 PDF 文件，按顺序合并为一个</p>
+    <div class="file-area" id="merge-area"><div class="icon">📎</div><div class="text">点击选择多个 PDF 文件</div></div>
+    <div id="merge-files"></div>
+    <div class="controls"><button class="btn btn-primary" id="merge-btn" disabled>合并 PDF</button></div>
+    <div class="status" id="merge-status"></div>
+  </div>
+
+  <!-- 拆分 -->
+  <div class="panel" id="panel-split">
+    <h2 class="panel-title">拆分 PDF</h2>
+    <p class="panel-desc">将 PDF 拆分为多个文件</p>
+    <div class="file-area" id="split-area"><div class="icon">✂️</div><div class="text">点击选择 PDF 文件</div></div>
+    <div id="split-files"></div>
+    <div class="controls">
+      <label>模式:</label>
+      <select id="split-mode"><option value="each">每页一个</option><option value="range">按范围</option><option value="half">一分为二</option></select>
+      <input type="text" id="split-ranges" placeholder="如: 1-3,4-6" style="display:none;width:180px">
+      <input type="number" id="split-at" placeholder="页码" min="1" style="display:none;width:100px">
+      <button class="btn btn-primary" id="split-btn" disabled>拆分</button>
+    </div>
+    <div class="status" id="split-status"></div>
+  </div>
+
+  <!-- 删除 -->
+  <div class="panel" id="panel-delete">
+    <h2 class="panel-title">删除页面</h2>
+    <p class="panel-desc">指定页码范围删除页面，预览确认后执行</p>
+    <div class="file-area" id="delete-area"><div class="icon">🗑️</div><div class="text">点击选择 PDF 文件</div></div>
+    <div id="delete-files"></div>
+    <div class="controls">
+      <label>页码:</label>
+      <input type="text" id="delete-pages" placeholder="如: 3-7 或 3,5,7">
+      <button class="btn btn-danger" id="delete-preview-btn" disabled>预览删除</button>
+    </div>
+    <div class="status" id="delete-status"></div>
+  </div>
+
+  <!-- 提取 -->
+  <div class="panel" id="panel-extract">
+    <h2 class="panel-title">提取页面</h2>
+    <p class="panel-desc">从 PDF 中提取指定页面为新文件</p>
+    <div class="file-area" id="extract-area"><div class="icon">📋</div><div class="text">点击选择 PDF 文件</div></div>
+    <div id="extract-files"></div>
+    <div class="controls">
+      <label>页码:</label>
+      <input type="text" id="extract-pages" placeholder="如: 1-3,5,7-10">
+      <button class="btn btn-primary" id="extract-btn" disabled>提取</button>
+    </div>
+    <div class="status" id="extract-status"></div>
+  </div>
+
+  <!-- 旋转 -->
+  <div class="panel" id="panel-rotate">
+    <h2 class="panel-title">旋转页面</h2>
+    <p class="panel-desc">旋转 PDF 中的页面</p>
+    <div class="file-area" id="rotate-area"><div class="icon">🔄</div><div class="text">点击选择 PDF 文件</div></div>
+    <div id="rotate-files"></div>
+    <div class="controls">
+      <label>角度:</label>
+      <select id="rotate-angle"><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select>
+      <label>页面:</label>
+      <input type="text" id="rotate-pages" placeholder="all 或 1-3,5" value="all" style="width:120px">
+      <button class="btn btn-primary" id="rotate-btn" disabled>旋转</button>
+    </div>
+    <div class="status" id="rotate-status"></div>
+  </div>
+
+  <!-- 重排序 -->
+  <div class="panel" id="panel-reorder">
+    <h2 class="panel-title">页面重排序</h2>
+    <p class="panel-desc">输入新的页面顺序（逗号分隔）</p>
+    <div class="file-area" id="reorder-area"><div class="icon">↕️</div><div class="text">点击选择 PDF 文件</div></div>
+    <div id="reorder-files"></div>
+    <div class="controls">
+      <label>新顺序:</label>
+      <input type="text" id="reorder-order" placeholder="如: 3,1,2,5,4" style="width:200px">
+      <button class="btn btn-primary" id="reorder-btn" disabled>重排序</button>
+    </div>
+    <div class="status" id="reorder-status"></div>
+  </div>
+
+  <!-- 压缩 -->
+  <div class="panel" id="panel-compress">
+    <h2 class="panel-title">压缩 PDF</h2>
+    <p class="panel-desc">去除冗余对象，减小文件体积</p>
+    <div class="file-area" id="compress-area"><div class="icon">📦</div><div class="text">点击选择 PDF 文件</div></div>
+    <div id="compress-files"></div>
+    <div class="controls"><button class="btn btn-primary" id="compress-btn" disabled>压缩</button></div>
+    <div class="status" id="compress-status"></div>
+  </div>
+</div>
+
+<!-- 删除确认弹窗 -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <h3>⚠️ 确认删除页面</h3>
+    <p id="delete-modal-info"></p>
+    <div class="actions">
+      <button class="btn btn-secondary" id="delete-cancel-btn">取消</button>
+      <button class="btn btn-danger" id="delete-confirm-btn">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+const { invoke } = window.__TAURI__.core;
+const { open, save } = window.__TAURI__.dialog;
+
+// ── State ─────────────────────────────
+const state = { files: {} }; // panel -> string[] (file paths)
+
+// ── Tab Switching ─────────────────────
+document.getElementById('tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  tab.classList.add('active');
+  document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+});
+
+// ── File Selection ────────────────────
+const panelConfig = {
+  merge: { accept: 'pdf', multiple: true },
+  split: { accept: 'pdf', multiple: false },
+  delete: { accept: 'pdf', multiple: false },
+  extract: { accept: 'pdf', multiple: false },
+  rotate: { accept: 'pdf', multiple: false },
+  reorder: { accept: 'pdf', multiple: false },
+  compress: { accept: 'pdf', multiple: false },
+};
+
+Object.keys(panelConfig).forEach(panel => {
+  const area = document.getElementById(panel + '-area');
+  if (!area) return;
+  area.addEventListener('click', async () => {
+    const cfg = panelConfig[panel];
+    const selected = await open({
+      multiple: cfg.multiple,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    });
+    if (!selected) return;
+    const paths = cfg.multiple ? selected : [selected];
+    state.files[panel] = paths;
+    renderFiles(panel);
+    updateBtn(panel);
+  });
+});
+
+function renderFiles(panel) {
+  const list = document.getElementById(panel + '-files');
+  const area = document.getElementById(panel + '-area');
+  const files = state.files[panel] || [];
+  if (files.length) { area.classList.add('has'); } else { area.classList.remove('has'); }
+  list.innerHTML = files.map((f, i) => {
+    const name = f.split('/').pop();
+    return `<div class="file-name">📄 ${name} ${panel === 'merge' ? `<span class="remove" data-idx="${i}">✕</span>` : ''}</div>`;
+  }).join('');
+  // Merge remove handler
+  list.querySelectorAll('.remove').forEach(el => {
+    el.addEventListener('click', () => {
+      state.files[panel].splice(parseInt(el.dataset.idx), 1);
+      renderFiles(panel);
+      updateBtn(panel);
+    });
+  });
+}
+
+function updateBtn(panel) {
+  const btnMap = { merge: 'merge-btn', split: 'split-btn', delete: 'delete-preview-btn', extract: 'extract-btn', rotate: 'rotate-btn', reorder: 'reorder-btn', compress: 'compress-btn' };
+  const btn = document.getElementById(btnMap[panel]);
+  if (btn) btn.disabled = !(state.files[panel]?.length);
+}
+
+// ── Split Mode Toggle ─────────────────
+document.getElementById('split-mode').addEventListener('change', e => {
+  document.getElementById('split-ranges').style.display = e.target.value === 'range' ? '' : 'none';
+  document.getElementById('split-at').style.display = e.target.value === 'half' ? '' : 'none';
+});
+
+// ── API Calls via Tauri invoke ────────
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function setStatus(id, type, msg) {
+  const el = document.getElementById(id);
+  el.className = 'status show ' + type;
+  el.innerHTML = type === 'loading' ? `<span class="spinner"></span> ${msg}` : msg;
+}
+
+function toast(msg, type) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// Merge
+document.getElementById('merge-btn').addEventListener('click', async () => {
+  const files = state.files.merge;
+  if (!files || files.length < 2) return toast('请至少选 2 个 PDF', 'error');
+  setStatus('merge-status', 'loading', '合并中...');
+  try {
+    const r = await invoke('cmd_merge_pdfs', { paths: files });
+    await saveFile(r.output_path, 'merged.pdf');
+    setStatus('merge-status', 'success', `✅ 合并完成！共 ${r.totalPages} 页`);
+    toast('合并完成', 'success');
+  } catch (e) { setStatus('merge-status', 'error', '❌ ' + e); toast(e, 'error'); }
+});
+
+// Split
+document.getElementById('split-btn').addEventListener('click', async () => {
+  const files = state.files.split;
+  if (!files?.length) return;
+  const mode = document.getElementById('split-mode').value;
+  setStatus('split-status', 'loading', '拆分中...');
+  try {
+    const r = await invoke('cmd_split_pdf', {
+      path: files[0], mode,
+      ranges: document.getElementById('split-ranges').value,
+      splitAt: parseInt(document.getElementById('split-at').value) || 0,
+    });
+    if (r.outputs.length === 1) {
+      await saveFile(r.outputs[0], 'split_result.pdf');
+    } else {
+      // 多文件：逐个保存到用户选择的目录
+      for (let i = 0; i < r.outputs.length; i++) {
+        const name = r.outputs[i].split('/').pop();
+        await saveFile(r.outputs[i], name);
+      }
+    }
+    setStatus('split-status', 'success', `✅ 拆分完成！${r.outputs.length} 个文件`);
+    toast('拆分完成', 'success');
+  } catch (e) { setStatus('split-status', 'error', '❌ ' + e); toast(e, 'error'); }
+});
+
+// Delete Preview + Confirm
+let pendingDeletePath = '';
+document.getElementById('delete-preview-btn').addEventListener('click', async () => {
+  const files = state.files.delete;
+  const pages = document.getElementById('delete-pages').value.trim();
+  if (!files?.length || !pages) return toast('请选择文件并输入页码', 'error');
+  setStatus('delete-status', 'loading', '预览中...');
+  try {
+    const d = await invoke('cmd_delete_preview', { path: files[0], pages });
+    pendingDeletePath = files[0];
+    document.getElementById('delete-modal-info').innerHTML =
+      `共 ${d.total_pages} 页，将删除 <strong>${d.delete_count}</strong> 页: ${d.pages_to_delete.join(', ')}`;
+    document.getElementById('delete-modal').classList.add('show');
+    setStatus('delete-status', 'info', '请确认删除');
+  } catch (e) { setStatus('delete-status', 'error', '❌ ' + e); }
+});
+
+document.getElementById('delete-cancel-btn').addEventListener('click', () => {
+  document.getElementById('delete-modal').classList.remove('show');
+});
+
+document.getElementById('delete-confirm-btn').addEventListener('click', async () => {
+  document.getElementById('delete-modal').classList.remove('show');
+  const pages = document.getElementById('delete-pages').value.trim();
+  setStatus('delete-status', 'loading', '删除中...');
+  try {
+    const r = await invoke('cmd_delete_pages', { path: pendingDeletePath, pages });
+    await saveFile(r.outputPath, 'pages_deleted.pdf');
+    setStatus('delete-status', 'success', `✅ 删除完成！剩余 ${r.preview.total_pages - r.preview.delete_count} 页`);
+    toast('删除完成', 'success');
+  } catch (e) { setStatus('delete-status', 'error', '❌ ' + e); toast(e, 'error'); }
+});
+
+// Extract
+document.getElementById('extract-btn').addEventListener('click', async () => {
+  const files = state.files.extract;
+  const pages = document.getElementById('extract-pages').value.trim();
+  if (!files?.length || !pages) return;
+  setStatus('extract-status', 'loading', '提取中...');
+  try {
+    const r = await invoke('cmd_extract_pages', { path: files[0], pages });
+    await saveFile(r.outputPath, 'extracted.pdf');
+    setStatus('extract-status', 'success', `✅ 提取了 ${r.extractedCount} 页`);
+    toast('提取完成', 'success');
+  } catch (e) { setStatus('extract-status', 'error', '❌ ' + e); toast(e, 'error'); }
+});
+
+// Rotate
+document.getElementById('rotate-btn').addEventListener('click', async () => {
+  const files = state.files.rotate;
+  if (!files?.length) return;
+  setStatus('rotate-status', 'loading', '旋转中...');
+  try {
+    const r = await invoke('cmd_rotate_pages', {
+      path: files[0],
+      pages: document.getElementById('rotate-pages').value,
+      angle: parseInt(document.getElementById('rotate-angle').value),
+    });
+    await saveFile(r.outputPath, 'rotated.pdf');
+    setStatus('rotate-status', 'success', `✅ 旋转了 ${r.rotatedCount} 页`);
+    toast('旋转完成', 'success');
+  } catch (e) { setStatus('rotate-status', 'error', '❌ ' + e); toast(e, 'error'); }
+});
+
+// Reorder
+document.getElementById('reorder-btn').addEventListener('click', async () => {
+  const files = state.files.reorder;
+  const order = document.getElementById('reorder-order').value.trim();
+  if (!files?.length || !order) return;
+  setStatus('reorder-status', 'loading', '重排序中...');
+  try {
+    const r = await invoke('cmd_reorder_pages', { path: files[0], order });
+    await saveFile(r.outputPath, 'reordered.pdf');
+    setStatus('reorder-status', 'success', '✅ 重排序完成');
+    toast('重排序完成', 'success');
+  } catch (e) { setStatus('reorder-status', 'error', '❌ ' + e); toast(e, 'error'); }
+});
+
+// Compress
+document.getElementById('compress-btn').addEventListener('click', async () => {
+  const files = state.files.compress;
+  if (!files?.length) return;
+  setStatus('compress-status', 'loading', '压缩中...');
+  try {
+    const r = await invoke('cmd_compress_pdf', { path: files[0] });
+    await saveFile(r.outputPath, 'compressed.pdf');
+    setStatus('compress-status', 'success',
+      `✅ 压缩完成: ${fmtSize(r.originalBytes)} → ${fmtSize(r.compressedBytes)} (${r.ratio})`);
+    toast('压缩完成', 'success');
+  } catch (e) { setStatus('compress-status', 'error', '❌ ' + e); toast(e, 'error'); }
+});
+
+// ── Save file dialog ──────────────────
+async function saveFile(srcPath, defaultName) {
+  const dest = await save({
+    defaultPath: defaultName,
+    filters: [{ name: 'PDF', extensions: ['pdf'] }],
+  });
+  if (!dest) return;
+  // Copy file via Tauri fs
+  await invoke('cmd_copy_file', { src: srcPath, dest });
+}
+
+// 注册一个额外的文件复制命令
+</script>
+</body>
+</html>

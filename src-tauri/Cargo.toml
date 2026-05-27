@@ -1,0 +1,22 @@
+[package]
+name = "pdf-toolkit"
+version = "1.0.0"
+description = "PDF 处理平台 — 合并/拆分/删除/提取/旋转/重排序/压缩/水印"
+authors = ["gcloudream"]
+edition = "2021"
+
+[lib]
+name = "pdf_toolkit_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+lopdf = "0.34"
+thiserror = "2"
