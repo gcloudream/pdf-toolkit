@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
-      - run: npm ci
+      - run: npm install
       - name: Install Linux deps
         if: matrix.platform == 'ubuntu-22.04'
         run: |
@@ -79,6 +79,7 @@ jobs:
         run: |
           mkdir -p release
           find artifacts -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' -o -name '*.deb' -o -name '*.AppImage' \) -exec cp {} release/ \;
+          ls -la release/
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
